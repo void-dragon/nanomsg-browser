@@ -1,0 +1,22 @@
+{
+  "name": "nanomsg-browser",
+  "version": "0.0.1",
+  "description": "A convinient wrapper for nanomsg in the browser",
+  "main": "dist/nanomsg.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/void-dragon/nanomsg-browser.git"
+  },
+  "keywords": [
+    "nanomsg"
+  ],
+  "author": "void-dragon",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/void-dragon/nanomsg-browser/issues"
+  },
+  "homepage": "https://github.com/void-dragon/nanomsg-browser#readme"
+}
