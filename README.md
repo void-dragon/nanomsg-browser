@@ -3,6 +3,12 @@
 This library is a convinient wrapper around a standart websocket, for
 easier connection with nanomsg sockets.
 
+## Supported Protocols
+
++ REQ
++ PAIR
++ SUB
+
 ## Examples
 
 ### Subscription

@@ -1,4 +1,3 @@
-// This class is for the namespace sake!
 const nanomsg = {
   REQ: 'rep.sp.nanomsg.org',
   PAIR: 'pair.sp.nanomsg.org',
