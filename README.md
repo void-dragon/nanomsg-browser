@@ -1,13 +1,37 @@
 # nanomsg-browser
 
-This library is a convinient wrapper around a standart websocket, for
+This library is a convenient wrapper around a standart websocket, for
 easier connection with nanomsg sockets.
 
-## Supported Protocols
+Supported and testes are the following client side protocols:
 
 + REQ
 + PAIR
 + SUB
+
+## install
+
+Install via command line.
+
+```sh
+npm install nanomsg-browser
+```
+
+And include the module in your html.
+
+```html
+<script src="node_modules/nanomsg-browser/dist/nanomsg.js" charset="utf-8"></script>
+```
+
+## configurataion
+```html
+<script type="text/javascript">
+  // Milliseconds between reconnects.
+  nanomsg.reconnectTime = 10 * 1000;
+  // Show some debug logging in the console.
+  nanomsg.debug = true;
+</script>
+```
 
 ## Examples
 
