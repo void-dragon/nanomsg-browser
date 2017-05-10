@@ -1,4 +1,6 @@
 const nanomsg = {
+  debug: false,
+  reconnectTime: 1000,
   REQ: 'rep.sp.nanomsg.org',
   PAIR: 'pair.sp.nanomsg.org',
   SUB: 'pub.sp.nanomsg.org',
@@ -39,29 +41,51 @@ nanomsg.Socket = class {
 
   connect(url) {
     if (!this.wss.has(url)) {
-      console.log('nanomsg connect to: ' + url);
+      if (nanomsg.debug) {
+        console.log('nanomsg connect to: ' + url);
+      }
+
       const ws = new WebSocket(url, [this.protocol]);
+      ws.initialUrl = url; // evil hack of evilness, to access the original used url
+
+      this.wss.set(url, ws);
 
       ws.onopen = () => {
-        console.log('nanomsg connected: ' + url);
-        this.wss.set(url, ws);
+        if (nanomsg.debug) {
+          console.log('nanomsg connected: ' + url);
+        }
       };
       ws.onmessage = this.handleMessage;
       ws.onerror = (e) => {
-        console.log('nanomsg error', e);
+        if (nanomsg.debug) {
+          console.log('nanomsg error', e);
+        }
       };
       ws.onclose = () => {
-        console.log('nanomsg close: ' + ws.url);
-
-        if (this.wss.has(ws.url)) {
-          this.wss.delete(ws.url);
+        if (nanomsg.debug) {
+          console.log('nanomsg close: ' + ws.initialUrl);
         }
-        // setTimeout(() => {
-        //   console.log('nanomsg reconnect: ' + ws.url);
-        //   this.connect(ws.url);
-        // }, 1000);
-      };
 
+        if (this.wss.has(ws.initialUrl)) {
+          setTimeout(() => {
+            if (nanomsg.debug) {
+              console.log('nanomsg reconnect: ' + ws.initialUrl);
+            }
+
+            this.wss.delete(ws.initialUrl);
+            this.connect(ws.initialUrl);
+          }, nanomsg.reconnectTime);
+        }
+      };
+    }
+  }
+
+  disconnect(url) {
+    const ws = this.wss.get(url);
+
+    if (ws) {
+      this.wss.delete(url);
+      ws.close();
     }
   }
 
@@ -101,7 +125,10 @@ nanomsg.Socket = class {
         if (this.wss.has(ws.url)) {
           this.wss.delete(ws.url);
         }
-        console.log('nanomsg: could not send, because of closed connection (' + ws.url + ')');
+
+        if (nanomsg.debug) {
+          console.log('nanomsg: could not send, because of closed connection (' + ws.url + ')');
+        }
       }
     }
   }
