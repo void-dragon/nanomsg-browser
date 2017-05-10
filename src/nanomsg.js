@@ -11,32 +11,17 @@ nanomsg.Socket = class {
     this.protocol = protocol;
     this.wss = new Map();
     this.reqIdHeader = null;
+    this.promise = null;
     this.cbs = {
       data: [],
     };
 
-    this.handleMessage = this.handleMessage.bind(this);
-
     if (this.protocol == nanomsg.REQ) {
       this.reqIdHeader = new Uint8Array(4);
       window.crypto.getRandomValues(this.reqIdHeader);
+      // the first bit HAS TO BE one, in order to get a response
+      this.reqIdHeader[0] |= 1 << 7;
     }
-  }
-
-  handleMessage(e) {
-    const reader = new FileReader();
-
-    reader.addEventListener('loadend', () => {
-      let data = reader.result;
-
-      if (this.protocol == nanomsg.REQ) {
-        data = data.substr(4);
-      }
-
-      this.cbs.data.forEach(cb => cb(data));
-    });
-
-    reader.readAsText(e.data);
   }
 
   connect(url) {
@@ -55,12 +40,34 @@ nanomsg.Socket = class {
           console.log('nanomsg connected: ' + url);
         }
       };
-      ws.onmessage = this.handleMessage;
+
+      ws.onmessage = (e) => {
+        const reader = new FileReader();
+
+        reader.addEventListener('loadend', () => {
+          const data = reader.result;
+
+          if (this.promise) {
+            this.promise.resolve(data);
+            this.promise = null;
+          }
+
+          this.cbs.data.forEach(cb => cb(data));
+        });
+
+        if (this.protocol == nanomsg.REQ) {
+          reader.readAsText(e.data.slice(4));
+        } else {
+          reader.readAsText(e.data);
+        }
+      };
+
       ws.onerror = (e) => {
         if (nanomsg.debug) {
           console.log('nanomsg error', e);
         }
       };
+
       ws.onclose = () => {
         if (nanomsg.debug) {
           console.log('nanomsg close: ' + ws.initialUrl);
@@ -118,6 +125,10 @@ nanomsg.Socket = class {
       msg = data;
     }
 
+    if (nanomsg.debug) {
+      console.log('nanomsg send =>', msg);
+    }
+
     for (let ws of this.wss.values()) {
       if (ws.readyState === 1) {
         ws.send(msg);
@@ -130,6 +141,12 @@ nanomsg.Socket = class {
           console.log('nanomsg: could not send, because of closed connection (' + ws.url + ')');
         }
       }
+    }
+
+    if (this.protocol === nanomsg.REQ || this.protocol === nanomsg.PAIR) {
+      return new Promise((resolve, reject) => {
+        this.promise = { resolve, reject };
+      });
     }
   }
 };
