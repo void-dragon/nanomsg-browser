@@ -14,11 +14,11 @@ Supported and testes are the following client side protocols:
 1. [install](#install)
 2. [configuration](#configuration)
 3. [api](#api)
-  1. [nanomsg](#nanomsg)
-  2. [nanomsg.Socket](#nanomsg.Socket)
+    1. [nanomsg](#nanomsg)
+    2. [nanomsg.Socket](#nanomsgsocket)
 4. [examples](#examples)
-  1. [subscription](#subscription)
-  2. [pair or req/rep](#pair or req/rep)
+    1. [subscription](#subscription)
+    2. [pair or req/rep](#pair-or-reqrep)
 
 ## install
 
