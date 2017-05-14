@@ -14,6 +14,8 @@ nanomsg.Socket = class {
     this.promise = null;
     this.cbs = {
       data: [],
+      end: [],
+      error: [],
     };
 
     if (this.protocol == nanomsg.REQ) {
@@ -26,64 +28,72 @@ nanomsg.Socket = class {
 
   connect(url) {
     if (!this.wss.has(url)) {
-      if (nanomsg.debug) {
-        console.log('nanomsg connect to: ' + url);
-      }
-
-      const ws = new WebSocket(url, [this.protocol]);
-      ws.initialUrl = url; // evil hack of evilness, to access the original used url
-
-      this.wss.set(url, ws);
-
-      ws.onopen = () => {
+      return new Promise((resolve, reject) => {
         if (nanomsg.debug) {
-          console.log('nanomsg connected: ' + url);
+          console.log('nanomsg connect to: ' + url);
         }
-      };
 
-      ws.onmessage = (e) => {
-        const reader = new FileReader();
+        const ws = new WebSocket(url, [this.protocol]);
+        ws.initialUrl = url; // evil hack of evilness, to access the original used url
 
-        reader.addEventListener('loadend', () => {
-          const data = reader.result;
+        this.wss.set(url, ws);
 
-          if (this.promise) {
-            this.promise.resolve(data);
-            this.promise = null;
+        ws.onopen = () => {
+          if (nanomsg.debug) {
+            console.log('nanomsg connected: ' + url);
           }
 
-          this.cbs.data.forEach(cb => cb(data));
-        });
+          resolve();
+        };
 
-        if (this.protocol == nanomsg.REQ) {
-          reader.readAsText(e.data.slice(4));
-        } else {
-          reader.readAsText(e.data);
-        }
-      };
+        ws.onmessage = (e) => {
+          const reader = new FileReader();
 
-      ws.onerror = (e) => {
-        if (nanomsg.debug) {
-          console.log('nanomsg error', e);
-        }
-      };
+          reader.addEventListener('loadend', () => {
+            const data = reader.result;
 
-      ws.onclose = () => {
-        if (nanomsg.debug) {
-          console.log('nanomsg close: ' + ws.initialUrl);
-        }
-
-        if (this.wss.has(ws.initialUrl)) {
-          setTimeout(() => {
-            if (nanomsg.debug) {
-              console.log('nanomsg reconnect: ' + ws.initialUrl);
+            if (this.promise) {
+              this.promise.resolve(data);
+              this.promise = null;
             }
 
-            this.wss.delete(ws.initialUrl);
-            this.connect(ws.initialUrl);
-          }, nanomsg.reconnectTime);
-        }
-      };
+            this.cbs.data.forEach(cb => cb(data));
+          });
+
+          if (this.protocol == nanomsg.REQ) {
+            reader.readAsText(e.data.slice(4));
+          } else {
+            reader.readAsText(e.data);
+          }
+        };
+
+        ws.onerror = (e) => {
+          if (nanomsg.debug) {
+            console.log('nanomsg error', e);
+          }
+
+          this.cbs.error.forEach(cb => cb(e));
+        };
+
+        ws.onclose = () => {
+          if (nanomsg.debug) {
+            console.log('nanomsg close: ' + ws.initialUrl);
+          }
+
+          if (this.wss.has(ws.initialUrl)) {
+            setTimeout(() => {
+              if (nanomsg.debug) {
+                console.log('nanomsg reconnect: ' + ws.initialUrl);
+              }
+
+              this.wss.delete(ws.initialUrl);
+              this.connect(ws.initialUrl);
+            }, nanomsg.reconnectTime);
+          }
+
+          this.cbs.end.forEach(cb => cb(ws.initialUrl));
+        };
+      });
     }
   }
 

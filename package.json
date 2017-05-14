@@ -1,6 +1,6 @@
 {
   "name": "nanomsg-browser",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A convinient wrapper for nanomsg in the browser",
   "main": "dist/nanomsg.js",
   "scripts": {

@@ -62,7 +62,7 @@ The nanomsg socket, whcih can hold multiple connections to other
 nanomsg sockets over the websocket protocol.
 
 + **constructor(protocol)**
-  + *protocol* The type of socket protocl to use.
+  + *protocol* The type of socket protocol to use.
 
   ```js
   const sock = new nanomsg.Socket(nanomsg.REQ);
