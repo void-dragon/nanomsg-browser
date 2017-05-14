@@ -127,9 +127,9 @@ nanomsg sockets over the websocket protocol.
   });
   ```
 
-  ## examples
+## examples
 
-  ### subscription
+### subscription
 
   ```js
   const sub = new nanomsg.Socket(nanomsg.SUB);
@@ -140,7 +140,7 @@ nanomsg sockets over the websocket protocol.
   });
   ```
 
-  ### pair or req/rep
+### pair or req/rep
 
   The behaviour of the API for pair or req/rep type of sockets
   is the same. That is the reason why there is only one combined example.
