@@ -41,6 +41,8 @@ And include the module in your html.
   nanomsg.reconnectTime = 10 * 1000;
   // Show some debug logging in the console.
   nanomsg.debug = true;
+  // Receives ArrayBuffer objects instead of strings. Default is `false`.
+  nanomsg.receiveArrayBuffer = false;
 </script>
 ```
 
@@ -108,7 +110,7 @@ nanomsg sockets over the websocket protocol.
 
 + **on(type, callback)**
 
-  For a more streaming like api zou can define callbacks.
+  For a more streaming like api you can define callbacks.
 
   + *type* The type of callback. Which is one of => data | error | end .
   + *callback* A callback function.

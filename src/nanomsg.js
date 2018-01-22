@@ -1,6 +1,7 @@
 const nanomsg = {
   debug: false,
   reconnectTime: 1000,
+  receiveArrayBuffer: false,
   REQ: 'rep.sp.nanomsg.org',
   PAIR: 'pair.sp.nanomsg.org',
   SUB: 'pub.sp.nanomsg.org',
@@ -33,67 +34,96 @@ nanomsg.Socket = class {
           console.log('nanomsg connect to: ' + url);
         }
 
-        const ws = new WebSocket(url, [this.protocol]);
-        ws.initialUrl = url; // evil hack of evilness, to access the original used url
+        const tryConnect = () => {
+          try {
+            this.__setupSocketConnection(url, resolve);
+          } catch (e) {
+            console.log(e);
+            this.wss.delete(url);
 
-        this.wss.set(url, ws);
-
-        ws.onopen = () => {
-          if (nanomsg.debug) {
-            console.log('nanomsg connected: ' + url);
-          }
-
-          resolve();
-        };
-
-        ws.onmessage = (e) => {
-          const reader = new FileReader();
-
-          reader.addEventListener('loadend', () => {
-            const data = reader.result;
-
-            if (this.promise) {
-              this.promise.resolve(data);
-              this.promise = null;
-            }
-
-            this.cbs.data.forEach(cb => cb(data));
-          });
-
-          if (this.protocol == nanomsg.REQ) {
-            reader.readAsText(e.data.slice(4));
-          } else {
-            reader.readAsText(e.data);
+            setTimeout(tryConnect, nanomsg.reconnectTime);
           }
         };
 
-        ws.onerror = (e) => {
-          if (nanomsg.debug) {
-            console.log('nanomsg error', e);
-          }
-
-          this.cbs.error.forEach(cb => cb(e));
-        };
-
-        ws.onclose = () => {
-          if (nanomsg.debug) {
-            console.log('nanomsg close: ' + ws.initialUrl);
-          }
-
-          if (this.wss.has(ws.initialUrl)) {
-            setTimeout(() => {
-              if (nanomsg.debug) {
-                console.log('nanomsg reconnect: ' + ws.initialUrl);
-              }
-
-              this.wss.delete(ws.initialUrl);
-              this.connect(ws.initialUrl);
-            }, nanomsg.reconnectTime);
-          }
-
-          this.cbs.end.forEach(cb => cb(ws.initialUrl));
-        };
+        tryConnect();
       });
+    }
+  }
+
+  __setupSocketConnection(url, resolve) {
+    const ws = new WebSocket(url, [this.protocol]);
+    ws.initialUrl = url; // evil hack of evilness, to access the original used url
+
+    if (nanomsg.receiveArrayBuffer) {
+      ws.binaryType = 'arraybuffer';
+    }
+
+    this.wss.set(url, ws);
+
+    ws.onopen = () => {
+      if (nanomsg.debug) {
+        console.log('nanomsg connected: ' + url);
+      }
+
+      resolve();
+    };
+
+    ws.onmessage = (e) => {
+      let data = null;
+
+      if (this.protocol == nanomsg.REQ) {
+        data = e.data.slice(4);
+      } else {
+        data = e.data;
+      }
+
+      if (nanomsg.receiveArrayBuffer) {
+        this.__resolveNewData(data);
+      } else {
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+          this.__resolveNewData(event.target.result);
+        };
+
+        reader.readAsText(data);
+      }
+    };
+
+    ws.onerror = (e) => {
+      if (nanomsg.debug) {
+        console.log('nanomsg error', e);
+      }
+
+      this.cbs.error.forEach(cb => cb(e));
+    };
+
+    ws.onclose = () => {
+      if (nanomsg.debug) {
+        console.log('nanomsg close: ' + ws.initialUrl);
+      }
+
+      if (this.wss.has(ws.initialUrl)) {
+        if (nanomsg.debug) {
+          console.log('nanomsg reconnect: ' + ws.initialUrl);
+        }
+
+        this.wss.delete(ws.initialUrl);
+        this.connect(ws.initialUrl);
+      }
+
+      this.cbs.end.forEach(cb => cb(ws.initialUrl));
+    };
+  }
+
+  __resolveNewData(data) {
+    if (data) {
+      if (this.promise) {
+        this.promise.resolve(data);
+        this.promise = null;
+      }
+
+      this.cbs.data.forEach(cb => cb(data));
     }
   }
 
@@ -125,14 +155,19 @@ nanomsg.Socket = class {
 
     // this is a good one: https://www.freelists.org/post/nanomsg/WebSocket-test-case-not-working,3
     if (this.protocol === nanomsg.REQ) {
-      const data = new Uint8Array(msg.length + 4);
+      const length = msg.length || msg.byteLength;
+      const data = new Uint8Array(length + 4);
       data.set(this.reqIdHeader, 0);
 
-      for (let i = 4; i < msg.length + 4; ++i) {
-        data[i] = msg.charCodeAt(i - 4);
-      }
+      if (typeof msg === 'string' || msg instanceof String) {
+        for (let i = 4; i < msg.length + 4; ++i) {
+          data[i] = msg.charCodeAt(i - 4);
+        }
 
-      msg = data;
+        msg = data;
+      } else {
+        data.set(msg, 4);
+      }
     }
 
     if (nanomsg.debug) {
