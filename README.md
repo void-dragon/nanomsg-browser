@@ -54,13 +54,14 @@ The root namespace for the nanomsg package.
 
 + **nanomsg.debug** Show or not show debugging information.
 + **nanomsg.reconnectTime** The delay between reconnect attempts. Default = 1000ms.
++ **nanomsg.receiveArrayBuffer** Set to `true` to receive ArrayBuffer objects instead of String.
 + **REQ** Enumeration option for a request socket.
 + **PAIR** Enumeration option for a pair socket.
 + **SUB** Enumeration option for a subscription socket.
 
 ### nanomsg.Socket
 
-The nanomsg socket, whcih can hold multiple connections to other
+The nanomsg socket, which can hold multiple connections to other
 nanomsg sockets over the websocket protocol.
 
 + **constructor(protocol)**
@@ -93,19 +94,27 @@ nanomsg sockets over the websocket protocol.
 
   Sends a message to all connected sockets.
 
-  **note:** Subscription sockets will throw an error, if you attempt to send something, since sending to a publisher is not supported.
+  **note:** Subscription sockets will throw an error, if you attempt to send something,
+    since sending to a publisher is not supported. Like
 
   + *msg* The message to be send. A string or buffer object.
 
   ```js
   const msg = 'some funky message';
   socke.send(msg);
+
   // for PAIR and REQ sockets, even this is possible
   socket
     .send(msg)
     .then((answer) => {
       console.log('got =>', answer);
     })
+
+  // and we can send an ArrayBuffer
+  const data = new Uint8Array(12);
+  window.crypto.getRandomValues(data);
+
+  socket.send(data);
   ```
 
 + **on(type, callback)**
