@@ -163,8 +163,6 @@ nanomsg.Socket = class {
         for (let i = 4; i < msg.length + 4; ++i) {
           data[i] = msg.charCodeAt(i - 4);
         }
-
-        msg = data;
       } else {
         data.set(msg, 4);
       }
@@ -176,7 +174,7 @@ nanomsg.Socket = class {
 
     for (let ws of this.wss.values()) {
       if (ws.readyState === 1) {
-        ws.send(msg);
+        ws.send(data);
       } else if (ws.readyState > 1) {
         if (this.wss.has(ws.url)) {
           this.wss.delete(ws.url);
