@@ -164,10 +164,11 @@ nanomsg.Socket = class {
           data[i] = msg.charCodeAt(i - 4);
         }
 
-        msg = data;
       } else {
         data.set(msg, 4);
       }
+
+      msg = data;
     }
 
     if (nanomsg.debug) {
