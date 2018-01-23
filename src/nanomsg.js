@@ -153,6 +153,10 @@ nanomsg.Socket = class {
       throw new Exception('SUB socket can not send');
     }
 
+    if (this.wss.size < 1) {
+      throw new Exception('you are not connected to any socket');
+    }
+
     // this is a good one: https://www.freelists.org/post/nanomsg/WebSocket-test-case-not-working,3
     if (this.protocol === nanomsg.REQ) {
       const length = msg.length || msg.byteLength;
