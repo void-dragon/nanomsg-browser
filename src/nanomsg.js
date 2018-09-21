@@ -200,3 +200,7 @@ nanomsg.Socket = class {
     }
   }
 };
+
+if (typeof exports !== 'undefined') {
+  Object.assign(exports, nanomsg);
+}
