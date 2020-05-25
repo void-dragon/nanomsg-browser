@@ -5,7 +5,7 @@ const uglify = require('gulp-uglify');
 gulp.task('default', () => {
   return gulp.src('src/nanomsg.js')
     .pipe(babel({
-      presets: ['es2015']
+      presets: ['@babel/env']
     }))
     .pipe(uglify())
     .pipe(gulp.dest('dist/'));
