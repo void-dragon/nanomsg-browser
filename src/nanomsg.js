@@ -160,18 +160,28 @@ nanomsg.Socket = class {
 
     // this is a good one: https://www.freelists.org/post/nanomsg/WebSocket-test-case-not-working,3
     if (this.protocol === nanomsg.REQ) {
-      const length = msg.length || msg.byteLength;
-      const data = new Uint8Array(length + 4);
-      data.set(this.reqIdHeader, 0);
-
       if (typeof msg === 'string' || msg instanceof String) {
-        for (let i = 4; i < msg.length + 4; ++i) {
-          data[i] = msg.charCodeAt(i - 4);
+
+        if (typeof TextEncoder === 'undefined') {
+          const buffer = new ArrayBuffer(msg.length);
+          const view = new Uint8Array(buffer);
+
+          for (let i = 0; i < msg.length; ++i) {
+            view[i] = msg.charCodeAt(i);
+          }
+
+          msg = buffer;
+        }
+        else {
+          const encoder = new TextEncoder();
+          msg = encoder.encode(msg);
         }
 
-      } else {
-        data.set(msg, 4);
       }
+
+      const data = new Uint8Array(msg.length + 4);
+      data.set(this.reqIdHeader, 0);
+      data.set(msg, 4);
 
       msg = data;
     }
@@ -183,7 +193,8 @@ nanomsg.Socket = class {
     for (let ws of this.wss.values()) {
       if (ws.readyState === 1) {
         ws.send(msg);
-      } else if (ws.readyState > 1) {
+      }
+      else if (ws.readyState > 1) {
         if (this.wss.has(ws.url)) {
           this.wss.delete(ws.url);
         }
