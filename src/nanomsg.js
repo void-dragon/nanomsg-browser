@@ -38,7 +38,7 @@ nanomsg.Socket = class {
           try {
             this.__setupSocketConnection(url, resolve);
           } catch (e) {
-            console.log(e);
+            console.exception(e);
             this.wss.delete(url);
 
             setTimeout(tryConnect, nanomsg.reconnectTime);
@@ -52,7 +52,8 @@ nanomsg.Socket = class {
 
   __setupSocketConnection(url, resolve) {
     const ws = new WebSocket(url, [this.protocol]);
-    ws.initialUrl = url; // evil hack of evilness, to access the original used url
+    // evil hack of evilness, to access the original used url
+    ws.initialUrl = url;
 
     if (nanomsg.receiveArrayBuffer) {
       ws.binaryType = 'arraybuffer';
@@ -92,7 +93,7 @@ nanomsg.Socket = class {
 
     ws.onerror = (e) => {
       if (nanomsg.debug) {
-        console.log('nanomsg error', e);
+        console.exception('nanomsg error', e);
       }
 
       this.cbs.error.forEach(cb => cb(e));
@@ -188,7 +189,7 @@ nanomsg.Socket = class {
         }
 
         if (nanomsg.debug) {
-          console.log('nanomsg: could not send, because of closed connection (' + ws.url + ')');
+          console.warn('nanomsg: could not send, because of closed connection (' + ws.url + ')');
         }
       }
     }
