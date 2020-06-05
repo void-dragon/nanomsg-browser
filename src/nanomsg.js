@@ -1,15 +1,19 @@
-const nanomsg = {
-  debug: false,
-  reconnectTime: 1000,
-  receiveArrayBuffer: false,
+const Protocol = {
   REQ: 'rep.sp.nanomsg.org',
   PAIR: 'pair.sp.nanomsg.org',
   SUB: 'pub.sp.nanomsg.org',
-}
+  BUS: 'bus.sp.nanomsg.org',
+};
 
-nanomsg.Socket = class {
-  constructor(protocol) {
-    this.protocol = protocol;
+class Socket {
+  constructor(config) {
+    this.config = Object.assign({
+      protocol: null,
+      debug: false,
+      reconnectTime: 1000,
+      receiveArrayBuffer: false,
+      sendArrayBuffer: false,
+    }, config);
     this.wss = new Map();
     this.reqIdHeader = null;
     this.promise = null;
@@ -19,18 +23,16 @@ nanomsg.Socket = class {
       error: [],
     };
 
-    if (this.protocol == nanomsg.REQ) {
-      this.reqIdHeader = new Uint8Array(4);
-      window.crypto.getRandomValues(this.reqIdHeader);
-      // the first bit HAS TO BE one, in order to get a response
-      this.reqIdHeader[0] |= 1 << 7;
-    }
+    this.reqIdHeader = new Uint8Array(4);
+    window.crypto.getRandomValues(this.reqIdHeader);
+    // the first bit HAS TO BE one, in order to get a response
+    this.reqIdHeader[0] |= 1 << 7;
   }
 
   connect(url) {
-    if (!this.wss.has(url)) {
-      return new Promise((resolve, reject) => {
-        if (nanomsg.debug) {
+    return new Promise((resolve, reject) => {
+      if (!this.wss.has(url)) {
+        if (this.config.debug) {
           console.log('nanomsg connect to: ' + url);
         }
 
@@ -41,28 +43,31 @@ nanomsg.Socket = class {
             console.exception(e);
             this.wss.delete(url);
 
-            setTimeout(tryConnect, nanomsg.reconnectTime);
+            setTimeout(tryConnect, this.config.reconnectTime);
           }
         };
 
         tryConnect();
-      });
-    }
+      }
+      else {
+        resolve();
+      }
+    });
   }
 
   __setupSocketConnection(url, resolve) {
-    const ws = new WebSocket(url, [this.protocol]);
+    const ws = new WebSocket(url, [this.config.protocol]);
     // evil hack of evilness, to access the original used url
     ws.initialUrl = url;
 
-    if (nanomsg.receiveArrayBuffer) {
+    if (this.config.receiveArrayBuffer) {
       ws.binaryType = 'arraybuffer';
     }
 
     this.wss.set(url, ws);
 
     ws.onopen = () => {
-      if (nanomsg.debug) {
+      if (this.config.debug) {
         console.log('nanomsg connected: ' + url);
       }
 
@@ -72,13 +77,13 @@ nanomsg.Socket = class {
     ws.onmessage = (e) => {
       let data = null;
 
-      if (this.protocol == nanomsg.REQ) {
+      if (this.config.protocol === Protocol.REQ) {
         data = e.data.slice(4);
       } else {
         data = e.data;
       }
 
-      if (nanomsg.receiveArrayBuffer) {
+      if (this.config.receiveArrayBuffer) {
         this.__resolveNewData(data);
       } else {
         const reader = new FileReader();
@@ -92,7 +97,7 @@ nanomsg.Socket = class {
     };
 
     ws.onerror = (e) => {
-      if (nanomsg.debug) {
+      if (this.config.debug) {
         console.exception('nanomsg error', e);
       }
 
@@ -100,12 +105,12 @@ nanomsg.Socket = class {
     };
 
     ws.onclose = () => {
-      if (nanomsg.debug) {
+      if (this.config.debug) {
         console.log('nanomsg close: ' + ws.initialUrl);
       }
 
       if (this.wss.has(ws.initialUrl)) {
-        if (nanomsg.debug) {
+        if (this.config.debug) {
           console.log('nanomsg reconnect: ' + ws.initialUrl);
         }
 
@@ -150,7 +155,7 @@ nanomsg.Socket = class {
   }
 
   send(msg) {
-    if (this.protocol === nanomsg.SUB) {
+    if (this.config.protocol === Protocol.SUB) {
       throw new Exception('SUB socket can not send');
     }
 
@@ -158,40 +163,39 @@ nanomsg.Socket = class {
       throw new Exception('you are not connected to any socket');
     }
 
-    // this is a good one: https://www.freelists.org/post/nanomsg/WebSocket-test-case-not-working,3
-    if (this.protocol === nanomsg.REQ) {
-      if (typeof msg === 'string' || msg instanceof String) {
+    if (this.config.sendArrayBuffer && (typeof msg === 'string' || msg instanceof String)) {
 
-        if (typeof TextEncoder === 'undefined') {
-          const buffer = new ArrayBuffer(msg.length);
-          const view = new Uint8Array(buffer);
+      if (typeof TextEncoder === 'undefined') {
+        const view = new Uint8Array(msg.length);
 
-          for (let i = 0; i < msg.length; ++i) {
-            view[i] = msg.charCodeAt(i);
-          }
-
-          msg = buffer;
-        }
-        else {
-          const encoder = new TextEncoder();
-          msg = encoder.encode(msg);
+        for (let i = 0; i < msg.length; ++i) {
+          view[i] = msg.charCodeAt(i);
         }
 
+        msg = view;
       }
+      else {
+        const encoder = new TextEncoder();
+        msg = encoder.encode(msg);
+      }
+    }
 
-      const data = new Uint8Array(msg.length + 4);
+    // this is a good one: https://www.freelists.org/post/nanomsg/WebSocket-test-case-not-working,3
+    if (this.config.protocol === Protocol.REQ) {
+      const length = msg.length || msg.byteLength;
+      const data = new Uint8Array(length + 4);
       data.set(this.reqIdHeader, 0);
       data.set(msg, 4);
 
       msg = data;
     }
 
-    if (nanomsg.debug) {
+    if (this.config.debug) {
       console.log('nanomsg send =>', msg);
     }
 
     for (let ws of this.wss.values()) {
-      if (ws.readyState === 1) {
+      if (ws.readyState === WebSocket.OPEN) {
         ws.send(msg);
       }
       else if (ws.readyState > 1) {
@@ -199,13 +203,13 @@ nanomsg.Socket = class {
           this.wss.delete(ws.url);
         }
 
-        if (nanomsg.debug) {
+        if (this.config.debug) {
           console.warn('nanomsg: could not send, because of closed connection (' + ws.url + ')');
         }
       }
     }
 
-    if (this.protocol === nanomsg.REQ || this.protocol === nanomsg.PAIR) {
+    if ([Protocol.REQ, Protocol.PAIR].indexOf(this.config.protocol) !== -1) {
       return new Promise((resolve, reject) => {
         this.promise = { resolve, reject };
       });
@@ -213,6 +217,7 @@ nanomsg.Socket = class {
   }
 };
 
-if (typeof exports !== 'undefined') {
-  Object.assign(exports, nanomsg);
-}
+module.exports = {
+  Protocol,
+  Socket,
+};
