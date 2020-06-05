@@ -8,6 +8,7 @@ Supported and testes are the following client side protocols:
 + REQ
 + PAIR
 + SUB
++ BUS
 
 **Table of Content**
 
@@ -19,6 +20,7 @@ Supported and testes are the following client side protocols:
 4. [examples](#examples)
     1. [subscription](#subscription)
     2. [pair or req/rep](#pair-or-reqrep)
+    3. [bus](#bus)
 
 ## install
 
@@ -26,25 +28,9 @@ Install via command line.
 
 ```sh
 npm install nanomsg-browser
+yarn add nanomsg-browser
 ```
-
-And include the module in your html.
-
-```html
-<script src="node_modules/nanomsg-browser/dist/nanomsg.js" charset="utf-8"></script>
-```
-
-## configurataion
-```html
-<script type="text/javascript">
-  // Milliseconds between reconnects.
-  nanomsg.reconnectTime = 10 * 1000;
-  // Show some debug logging in the console.
-  nanomsg.debug = true;
-  // Receives ArrayBuffer objects instead of strings. Default is `false`.
-  nanomsg.receiveArrayBuffer = false;
-</script>
-```
+**note:** This package is intended to be used with a bundler like WebPack, browserify or Rollup.
 
 ## api
 
@@ -52,23 +38,29 @@ And include the module in your html.
 
 The root namespace for the nanomsg package.
 
-+ **nanomsg.debug** Show or not show debugging information.
-+ **nanomsg.reconnectTime** The delay between reconnect attempts. Default = 1000ms.
-+ **nanomsg.receiveArrayBuffer** Set to `true` to receive ArrayBuffer objects instead of String.
+### nanomsg.Protocol
+
 + **REQ** Enumeration option for a request socket.
 + **PAIR** Enumeration option for a pair socket.
 + **SUB** Enumeration option for a subscription socket.
++ **BUS** Enumeration option for a bus socket.
 
 ### nanomsg.Socket
 
 The nanomsg socket, which can hold multiple connections to other
 nanomsg sockets over the websocket protocol.
 
-+ **constructor(protocol)**
-  + *protocol* The type of socket protocol to use.
++ **constructor(config)**
+  + *config* The configurations object, at least the protocol has to be defined.
 
   ```js
-  const sock = new nanomsg.Socket(nanomsg.REQ);
+  const socket = new nanomsg.Socket({
+    protocol: nanomsg.Protocol.REQ,
+    reconnectTime: 1000,       // Milliseconds between reconnects.
+    debug: true,               // Show some debug logging in the console.
+    sendArrayBuffer: false,    // Sends ArrayBuffer objects instead of strings. Default is `false`.
+    receiveArrayBuffer: false, // Receives ArrayBuffer objects instead of strings. Default is `false`.
+  });
   ```
 + **connect(url)**
 
@@ -143,7 +135,9 @@ nanomsg sockets over the websocket protocol.
 ### subscription
 
   ```js
-  const sub = new nanomsg.Socket(nanomsg.SUB);
+  import {Socket, Protocol} from 'nanomsg-browser';
+
+  const sub = new Socket({protocol: Protocol.SUB});
   sub.connect('ws://myhost:8080/');
 
   sub.on('data', (msg) => {
@@ -157,8 +151,10 @@ nanomsg sockets over the websocket protocol.
   is the same. That is the reason why there is only one combined example.
 
   ```js
-  const sock = new nanomsg.Socket(nanomsg.REQ);
-  // const sock = new nanomsg.Socket(nanomsg.PAIR);
+  import {Socket, Protocol} from 'nanomsg-browser';
+
+  const sock = new Socket({protocol: Protocol.REQ});
+  // const sock = new Socket({protocol: Protocol.PAIR});
 
   // old school more streamy approach
 
@@ -169,17 +165,30 @@ nanomsg sockets over the websocket protocol.
   sock
     .connect('ws://myhost:8080')
     .then(() => {
-        sock.send('some cool msg');
+        sock.send('some cool msg')
+        .then(msg => {
+          console.log('got =>', msg);
+        });
     });
 
-  // be hippster, be promise
-  sock
-    .connect('ws://myhost:8080')
-    .then(() => {
-        sock
-          .send('some cool msg')
-          .then((msg) => {
-            console.log('got =>', msg);
-          });
-    });
+  // be hippster, be async/await
+  await sock.connect('ws://myhost:8080');
+  const answer = await sock.send('some cool msg');
+  console.log('got =>', msg);
+  ```
+
+### bus
+
+  ```js
+  import {Socket, Protocol} from 'nanomsg-browser';
+
+  const sock = new Socket({protocol: Protocol.BUS});
+
+  sock.send('some data', (data) => {
+    console.log('got =>', data);
+  });
+
+  sock.on('data', msg => {
+    console.log('got =>', msg);
+  });
   ```
