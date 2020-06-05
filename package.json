@@ -11,7 +11,8 @@
     "url": "git+https://github.com/void-dragon/nanomsg-browser.git"
   },
   "keywords": [
-    "nanomsg"
+    "nanomsg",
+    "nng"
   ],
   "author": "void-dragon",
   "license": "MIT",
