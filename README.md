@@ -13,7 +13,7 @@ Supported and testes are the following client side protocols:
 **Table of Content**
 
 1. [install](#install)
-2. [configuration](#configuration)
+2. [nng compatibility](#nng-compatibility)
 3. [api](#api)
     1. [nanomsg](#nanomsg)
     2. [nanomsg.Socket](#nanomsgsocket)
@@ -31,6 +31,24 @@ npm install nanomsg-browser
 yarn add nanomsg-browser
 ```
 **note:** This package is intended to be used with a bundler like WebPack, browserify or Rollup.
+
+## nng compatibility
+
+This package should work out of the box with **NNG** as well.
+
+**note:** NNG demands two things, only ArrayBuffers for send and receive, and if there is no path specified it can occoure connection errors, at least with the Rust wrapper for NNG.
+
+The following configuration should work :)
+```js
+import {Socket, Protocol} from 'nanomsg-browser';
+
+const sock = new Socket({
+  protocol: Protocol.REQ,
+  sendArrayBuffer: true,
+  receiveArrayBuffer: true,
+});
+sock.connect('ws://myhost:9000/req');
+```
 
 ## api
 
