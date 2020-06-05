@@ -201,6 +201,6 @@ nanomsg.Socket = class {
   }
 };
 
-if (typeof exports !== 'undefined') {
-  Object.assign(exports, nanomsg);
+if (typeof module !== 'undefined') {
+  module.exports = nanomsg;
 }
