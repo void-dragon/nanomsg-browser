@@ -192,7 +192,7 @@ nanomsg sockets over the websocket protocol.
   // be hippster, be async/await
   await sock.connect('ws://myhost:8080');
   const answer = await sock.send('some cool msg');
-  console.log('got =>', msg);
+  console.log('got =>', answer);
   ```
 
 ### bus
